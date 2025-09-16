@@ -5,11 +5,12 @@ from datetime import datetime
 
 from .models import (
     Department, Question, Session, SessionState, UserResponse, 
-    ClassificationResult, TRAIT_NAMES
+    ClassificationResult
 )
 from .utils import (
     cosine_similarity, softmax, calculate_entropy, 
-    calculate_information_gain, normalize_likert_response, get_confidence_level
+    calculate_information_gain, normalize_likert_response, get_confidence_level,
+    TRAIT_NAMES
 )
 from ..config import settings
 

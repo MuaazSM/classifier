@@ -25,11 +25,15 @@ class Settings(BaseSettings):
     SIMILARITY_THRESHOLD: float = 0.7
     MAX_CHUNKS_PER_DEPT: int = 5
     
+    # Optional external API keys (can be present but not required)
+    HF_TOKEN: Optional[str] = None
+    LANGCHAIN_API_KEY: Optional[str] = None
+    
     # Data paths (relative to backend directory)
-    DATA_DIR: str = "data"
-    DEPARTMENTS_FILE: str = "data/departments.json"
-    QUESTIONS_FILE: str = "data/question_bank.json"
-    PDF_FILE: str = "data/departments.pdf"
+    DATA_DIR: str = "app/data"
+    DEPARTMENTS_FILE: str = "app/data/departments.json"
+    QUESTIONS_FILE: str = "app/data/question_bank.json"
+    PDF_FILE: str = "app/data/departments.pdf"
     
     # CORS settings
     ALLOWED_ORIGINS: list = ["*"]  # Configure for production
@@ -38,5 +42,7 @@ class Settings(BaseSettings):
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
+        # Allow extra fields to prevent validation errors from unused env vars
+        extra = "ignore"
 
 settings = Settings()
