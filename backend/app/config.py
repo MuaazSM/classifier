@@ -1,4 +1,3 @@
-# backend/app/config.py - Updated for proper question limits
 import os
 from typing import Optional, List
 from pydantic_settings import BaseSettings

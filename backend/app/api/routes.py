@@ -19,9 +19,7 @@ rag_engine = TaqneeqRAG(classifier.departments) if settings.ENABLE_RAG else None
 
 router = APIRouter()
 
-# =============================================================================
 # CLASSIFICATION ENDPOINTS
-# =============================================================================
 
 @router.post("/classification/start")
 async def start_classification(request: StartSessionRequest):
@@ -229,9 +227,7 @@ async def get_session_status(session_id: str):
             detail=f"Failed to get session status: {str(e)}"
         )
 
-# =============================================================================
 # DEPARTMENT ENDPOINTS
-# =============================================================================
 
 @router.get("/departments")
 async def list_departments(
@@ -395,9 +391,7 @@ async def get_similar_departments(
             detail="Failed to find similar departments"
         )
 
-# =============================================================================
 # MONITORING ENDPOINTS  
-# =============================================================================
 
 @router.get("/health")
 async def health_check():

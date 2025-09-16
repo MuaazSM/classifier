@@ -1,10 +1,3 @@
-
-# FILE: backend/run.py
-#!/usr/bin/env python3
-"""
-Simple run script for Taqneeq Department Classifier
-"""
-
 import sys
 import os
 from pathlib import Path

@@ -456,20 +456,29 @@ export default function ClassificationQuiz({ onComplete }: ClassificationQuizPro
               </div>
               <p className="text-gray-600 text-lg">{result.reasoning}</p>
               
+              {/* Debug info - remove after testing */}
+              {process.env.NODE_ENV === 'development' && (
+                <div className="mt-4 p-3 bg-gray-100 text-xs rounded">
+                  <strong>Debug:</strong> 
+                  Secondary: {result.secondary_department || 'null'} | 
+                  Probability: {result.secondary_probability || 'null'}
+                </div>
+              )}
+              
               {/* Secondary/Fallback Department */}
-              {result.secondary_department && result.secondary_probability && result.secondary_probability > 0.1 && (
+              {result.secondary_department && result.secondary_probability && (
                 <div className="mt-4 pt-4 border-t border-gray-200">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Alternative Match:</h3>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">Second Best Match:</h3>
                   <div className="flex items-center gap-3">
                     <span className="text-gray-800 font-medium">
                       {getDepartmentDisplayName(result.secondary_department)}
                     </span>
-                    <div className="bg-gray-100 text-gray-700 px-3 py-1 rounded-full text-sm font-semibold">
+                    <div className="bg-orange-100 text-orange-700 px-3 py-1 rounded-full text-sm font-semibold">
                       {(result.secondary_probability * 100).toFixed(1)}% match
                     </div>
                   </div>
                   <p className="text-sm text-gray-600 mt-1">
-                    Also a strong fit based on your responses
+                    Another strong option based on your profile
                   </p>
                 </div>
               )}

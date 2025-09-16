@@ -1,7 +1,3 @@
-"""
-LLM prompts for generating department explanations
-"""
-
 EXPLANATION_PROMPT = """
 You are an expert advisor helping students find their perfect department match for Taqneeq techfest.
 
