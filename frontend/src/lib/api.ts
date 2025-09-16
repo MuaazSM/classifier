@@ -1,4 +1,4 @@
-// frontend/src/lib/api.ts - Updated with environment variables
+// frontend/src/lib/api.ts - Fixed API configuration
 export interface Question {
     id: string;
     text: string;
@@ -97,10 +97,10 @@ export interface Question {
     private baseURL: string;
   
     constructor() {
-      // Use environment variable with fallback
-      this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+      // Fixed API URL to match backend structure
+      this.baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
       
-      if (process.env.NEXT_PUBLIC_DEBUG === 'true') {
+      if (process.env.NODE_ENV === 'development') {
         console.log('TaqneeqAPI initialized with baseURL:', this.baseURL);
       }
     }
@@ -116,7 +116,7 @@ export interface Question {
         ...options,
       };
   
-      if (process.env.NEXT_PUBLIC_DEBUG === 'true') {
+      if (process.env.NODE_ENV === 'development') {
         console.log('API Request:', { url, method: config.method || 'GET', body: config.body });
       }
   
@@ -136,7 +136,7 @@ export interface Question {
   
         const data = await response.json();
         
-        if (process.env.NEXT_PUBLIC_DEBUG === 'true') {
+        if (process.env.NODE_ENV === 'development') {
           console.log('API Response:', data);
         }
         

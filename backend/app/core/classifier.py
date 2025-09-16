@@ -192,76 +192,119 @@ class TaqneeqClassifier:
         # Convert similarities to probabilities using softmax
         session.department_probabilities = softmax(similarities)
     
-    def _get_next_question(self, session: Session) -> Tuple[Optional[Question], bool]:
-        """Determine next question or if classification should stop"""
-        questions_answered = len(session.responses)
-        
-        # Phase 1: Seed questions (always ask all seed questions first)
-        if questions_answered < len(self.seed_questions):
-            session.state = SessionState.SEED_QUESTIONS
-            return self.seed_questions[questions_answered], True
-        
-        # Check stopping criteria
-        probs = session.department_probabilities
-        top_prob = max(probs.values()) if probs else 0.0
-        sorted_probs = sorted(probs.values(), reverse=True)
-        second_prob = sorted_probs[1] if len(sorted_probs) > 1 else 0.0
-        
-        # NEW: Early termination check after seed questions
-        if questions_answered == len(self.seed_questions):
-            # Just finished seed questions, check if we have high confidence
-            if top_prob >= settings.EARLY_TERMINATION_THRESHOLD:
-                logger.info(f"Early termination after seed questions: {top_prob:.1%} confidence")
-                return None, False
-        
-        # Enhanced stopping criteria
-        should_stop = (
-            # High confidence threshold
-            top_prob >= settings.CONFIDENCE_THRESHOLD or
-            # Maximum questions reached  
-            questions_answered >= settings.MAX_QUESTIONS or
-            # Good confidence with clear leader after minimum adaptive questions
-            (questions_answered >= len(self.seed_questions) + settings.MIN_ADAPTIVE_QUESTIONS and 
-             top_prob >= settings.SECONDARY_THRESHOLD and 
-             top_prob - second_prob >= 0.20) or
-            # Very high confidence with decent gap
-            (questions_answered >= len(self.seed_questions) + 1 and
-             top_prob >= 0.75 and 
-             top_prob - second_prob >= 0.30)
+# backend/app/core/classifier.py - Fixed _get_next_question method
+def _get_next_question(self, session: Session) -> Tuple[Optional[Question], bool]:
+    """Determine next question or if classification should stop"""
+    questions_answered = len(session.responses)
+
+    # Phase 1: Seed questions (always ask all seed questions first)
+    if questions_answered < len(self.seed_questions):
+        session.state = SessionState.SEED_QUESTIONS
+        return self.seed_questions[questions_answered], True
+
+    # Get current probabilities and confidence
+    probs = session.department_probabilities
+    top_prob = max(probs.values()) if probs else 0.0
+    sorted_probs = sorted(probs.values(), reverse=True)
+    second_prob = sorted_probs[1] if len(sorted_probs) > 1 else 0.0
+    adaptive_questions_asked = questions_answered - len(self.seed_questions)
+
+    logger.info(
+        f"Question decision: Q{questions_answered}, Adaptive={adaptive_questions_asked}, "
+        f"Top={top_prob:.1%}, Gap={top_prob - second_prob:.1%}, "
+        f"MinAdaptive={settings.MIN_ADAPTIVE_QUESTIONS}"
+    )
+
+    gap = top_prob - second_prob
+
+    # ENHANCED STOPPING CRITERIA - Fixed for 10-12 questions
+    should_stop = (
+        adaptive_questions_asked >= 8
+        and (
+            # Good confidence with clear gap
+            (top_prob >= 0.65 and gap >= 0.15)
+            or
+            # Maximum questions reached
+            questions_answered >= 15
+            or
+            # Very high confidence with large gap
+            (top_prob >= 0.80 and gap >= 0.25)
         )
-        
-        if should_stop:
-            logger.info(f"Classification stopping: questions={questions_answered}, "
-                       f"top_prob={top_prob:.1%}, gap={top_prob - second_prob:.1%}")
-            return None, False
-        
-        # Phase 2: Adaptive questions based on information gain
-        session.state = SessionState.ADAPTIVE_QUESTIONS
-        
-        available_questions = [
-            q for q in self.questions.values()
-            if (q.id not in session.questions_asked and 
-                q.question_stage == "adaptive")
-        ]
-        
-        if not available_questions:
-            # No more questions available
-            logger.info("No more questions available, stopping classification")
-            return None, False
-        
-        # Select question with highest expected information gain
-        best_question = None
-        max_gain = -1
-        
-        for question in available_questions:
-            info_gain = self._calculate_information_gain(session, question)
-            weighted_gain = info_gain * question.information_value
-            
-            if weighted_gain > max_gain:
-                max_gain = weighted_gain
-                best_question = question
-        
-        return best_question, True
+    )
+
+    # FORCE MINIMUM ADAPTIVE QUESTIONS
+    adaptive_questions_asked = questions_answered - len(self.seed_questions)
+    if adaptive_questions_asked < settings.MIN_ADAPTIVE_QUESTIONS:
+        should_stop = False
+        logger.info(f"Forcing more questions: {adaptive_questions_asked}/{settings.MIN_ADAPTIVE_QUESTIONS} adaptive questions asked")
+    # NEVER STOP BEFORE 8 ADAPTIVE QUESTIONS
+    if adaptive_questions_asked < 8:
+        should_stop = False
+        logger.info(f"Forcing more questions: {adaptive_questions_asked}/8 adaptive questions asked")
+
+    # NEVER stop before minimum adaptive questions
+    if adaptive_questions_asked < settings.MIN_ADAPTIVE_QUESTIONS:
+        should_stop = False
+        logger.info(
+            f"Forcing more questions: {adaptive_questions_asked}/{settings.MIN_ADAPTIVE_QUESTIONS} adaptive questions asked"
+        )
+
+    if should_stop:
+        logger.info(
+            f"Classification stopping: questions={questions_answered}, "
+            f"adaptive={adaptive_questions_asked}, "
+            f"top_prob={top_prob:.1%}, gap={gap:.1%}"
+        )
+        return None, False
+
+    # Phase 2: Adaptive questions based on information gain
+    session.state = SessionState.ADAPTIVE_QUESTIONS
+
+    available_questions = [
+        q
+        for q in self.questions.values()
+        if (q.id not in session.questions_asked and q.question_stage == "adaptive")
+    ]
+
+    if not available_questions:
+        logger.info("No more questions available, stopping classification")
+        return None, False
+
+    # Select question with highest expected information gain
+    best_question = None
+    max_gain = -1
+
+    for question in available_questions:
+        info_gain = self._calculate_information_gain(session, question)
+
+        # Boost questions that target uncertain departments
+        top_department = max(probs.items(), key=lambda x: x[1])[0]
+        if top_department in question.target_departments:
+            info_gain *= 1.5  # Boost relevant questions
+
+        # Boost questions for traits we haven't explored much
+        trait_questions_asked = sum(
+            1
+            for resp in session.responses
+            if session.questions[resp.question_id].primary_trait == question.primary_trait
+        )
+        if trait_questions_asked == 0:
+            info_gain *= 2.0  # Strongly prefer unexplored traits
+        elif trait_questions_asked == 1:
+            info_gain *= 1.3
+
+        weighted_gain = info_gain * question.information_value
+
+        if weighted_gain > max_gain:
+            max_gain = weighted_gain
+            best_question = question
+
+    logger.info(
+        f"Selected question {best_question.id} with gain {max_gain:.3f}, "
+        f"questions_answered={questions_answered}"
+    )
+
+    return best_question, True
 
     
     def _calculate_information_gain(self, session: Session, question: Question) -> float:
