@@ -1,5 +1,6 @@
+# backend/app/config.py - Updated question limits
 import os
-from typing import Optional
+from typing import Optional, List
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
@@ -11,11 +12,13 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     RELOAD: bool = False
     
-    # Classification settings
+    # Classification settings - UPDATED
     CONFIDENCE_THRESHOLD: float = 0.85
     SECONDARY_THRESHOLD: float = 0.70
-    MAX_QUESTIONS: int = 15
-    MIN_QUESTIONS: int = 6
+    EARLY_TERMINATION_THRESHOLD: float = 0.80  # New: Early termination after seed questions
+    MAX_QUESTIONS: int = 12  # Reduced from 15 to 12
+    MIN_QUESTIONS: int = 4   # Minimum seed questions
+    MIN_ADAPTIVE_QUESTIONS: int = 2  # Minimum adaptive questions before early termination
     LEARNING_RATE: float = 0.3
     
     # RAG settings
@@ -35,8 +38,14 @@ class Settings(BaseSettings):
     QUESTIONS_FILE: str = "app/data/question_bank.json"
     PDF_FILE: str = "app/data/departments.pdf"
     
-    # CORS settings
-    ALLOWED_ORIGINS: list = ["*"]  # Configure for production
+    # CORS settings - Updated for development
+    ALLOWED_ORIGINS: List[str] = [
+        "http://localhost:3000",  # Next.js development server
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",  # Alternative port
+        "http://127.0.0.1:3001",
+        "*"  # Allow all origins in development (remove in production)
+    ]
     
     class Config:
         env_file = ".env"

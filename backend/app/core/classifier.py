@@ -207,16 +207,32 @@ class TaqneeqClassifier:
         sorted_probs = sorted(probs.values(), reverse=True)
         second_prob = sorted_probs[1] if len(sorted_probs) > 1 else 0.0
         
-        # Stop if any stopping criterion is met
+        # NEW: Early termination check after seed questions
+        if questions_answered == len(self.seed_questions):
+            # Just finished seed questions, check if we have high confidence
+            if top_prob >= settings.EARLY_TERMINATION_THRESHOLD:
+                logger.info(f"Early termination after seed questions: {top_prob:.1%} confidence")
+                return None, False
+        
+        # Enhanced stopping criteria
         should_stop = (
-            top_prob >= settings.CONFIDENCE_THRESHOLD or  # High confidence
-            questions_answered >= settings.MAX_QUESTIONS or  # Max questions reached
-            (questions_answered >= settings.MIN_QUESTIONS and 
+            # High confidence threshold
+            top_prob >= settings.CONFIDENCE_THRESHOLD or
+            # Maximum questions reached  
+            questions_answered >= settings.MAX_QUESTIONS or
+            # Good confidence with clear leader after minimum adaptive questions
+            (questions_answered >= len(self.seed_questions) + settings.MIN_ADAPTIVE_QUESTIONS and 
              top_prob >= settings.SECONDARY_THRESHOLD and 
-             top_prob - second_prob >= 0.25)  # Clear leader with good confidence
+             top_prob - second_prob >= 0.20) or
+            # Very high confidence with decent gap
+            (questions_answered >= len(self.seed_questions) + 1 and
+             top_prob >= 0.75 and 
+             top_prob - second_prob >= 0.30)
         )
         
         if should_stop:
+            logger.info(f"Classification stopping: questions={questions_answered}, "
+                       f"top_prob={top_prob:.1%}, gap={top_prob - second_prob:.1%}")
             return None, False
         
         # Phase 2: Adaptive questions based on information gain
@@ -230,6 +246,7 @@ class TaqneeqClassifier:
         
         if not available_questions:
             # No more questions available
+            logger.info("No more questions available, stopping classification")
             return None, False
         
         # Select question with highest expected information gain
@@ -245,6 +262,7 @@ class TaqneeqClassifier:
                 best_question = question
         
         return best_question, True
+
     
     def _calculate_information_gain(self, session: Session, question: Question) -> float:
         """

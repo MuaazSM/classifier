@@ -54,7 +54,7 @@ app = FastAPI(
 setup_middleware(app)
 
 # Include routes
-app.include_router(router, prefix="/api", tags=["Classification"])
+app.include_router(router, prefix="/api/v1", tags=["Classification"])
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
