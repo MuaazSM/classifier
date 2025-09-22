@@ -1,14 +1,19 @@
-// frontend/next.config.ts
+// frontend/next.config.ts - Environment-configurable
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // API rewrites for development (helps with CORS)
+  // API rewrites for development (helps with CORS) - now configurable
   async rewrites() {
     if (process.env.NODE_ENV === 'development') {
+      const backendHost = process.env.NEXT_PUBLIC_BACKEND_HOST || 'localhost';
+      const backendPort = process.env.NEXT_PUBLIC_BACKEND_PORT || '8000';
+      const backendProtocol = process.env.NEXT_PUBLIC_BACKEND_PROTOCOL || 'http';
+      const backendUrl = `${backendProtocol}://${backendHost}:${backendPort}`;
+      
       return [
         {
           source: '/api/v1/:path*',
-          destination: 'http://localhost:8000/api/v1/:path*',
+          destination: `${backendUrl}/api/v1/:path*`,
         },
       ];
     }
@@ -20,7 +25,11 @@ const nextConfig: NextConfig = {
   
   // Optimize images
   images: {
-    domains: ['localhost'],
+    domains: [
+      'localhost',
+      process.env.NEXT_PUBLIC_BACKEND_HOST || 'localhost',
+      ...(process.env.NEXT_PUBLIC_ALLOWED_IMAGE_DOMAINS?.split(',') || [])
+    ],
     unoptimized: process.env.NODE_ENV === 'development',
   },
   

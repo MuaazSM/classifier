@@ -70,10 +70,15 @@ def setup_middleware(app: FastAPI) -> None:
     """Setup all middleware for the application"""
     from ..config import settings
     
-    # CORS middleware (must be added first)
+    # Get dynamic CORS origins
+    allowed_origins = settings.ALLOWED_ORIGINS
+    
+    logger.info(f"Setting up CORS with origins: {allowed_origins}")
+    
+    # CORS middleware (must be added first) - now uses dynamic origins
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.ALLOWED_ORIGINS,
+        allow_origins=allowed_origins,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["*"],

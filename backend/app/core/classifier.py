@@ -236,7 +236,7 @@ class TaqneeqClassifier:
             # Boost unexplored traits
             trait_questions_asked = sum(
                 1 for resp in session.responses
-                if session.questions[resp.question_id].primary_trait == question.primary_trait
+                if self.questions[resp.question_id].primary_trait == question.primary_trait  # ✅ CORRECT
             )
             if trait_questions_asked == 0:
                 info_gain *= 2.0

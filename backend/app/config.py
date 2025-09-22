@@ -11,6 +11,10 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     RELOAD: bool = False
     
+    # Frontend URL for CORS (configurable)
+    FRONTEND_URL: str = "http://localhost:3000"
+    FRONTEND_PORT: int = 3000
+    
     # Classification settings - FIXED FOR PROPER QUESTIONING
     CONFIDENCE_THRESHOLD: float = 0.65  # Lowered from 0.85 to allow more questions
     SECONDARY_THRESHOLD: float = 0.65   # Lowered from 0.70
@@ -37,14 +41,26 @@ class Settings(BaseSettings):
     QUESTIONS_FILE: str = "app/data/question_bank.json"
     PDF_FILE: str = "app/data/departments.pdf"
     
-    # CORS settings
-    ALLOWED_ORIGINS: List[str] = [
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:3001",
-        "http://127.0.0.1:3001",
-        "*"  # Allow all origins in development
-    ]
+    # CORS settings - now configurable
+    @property
+    def ALLOWED_ORIGINS(self) -> List[str]:
+        """Dynamic CORS origins based on environment variables"""
+        origins = [
+            self.FRONTEND_URL,
+            f"http://localhost:{self.FRONTEND_PORT}",
+            f"http://127.0.0.1:{self.FRONTEND_PORT}",
+        ]
+        
+        # Add additional origins from environment if provided
+        extra_origins = os.getenv('ADDITIONAL_CORS_ORIGINS', '')
+        if extra_origins:
+            origins.extend([origin.strip() for origin in extra_origins.split(',')])
+        
+        # In development, allow all origins
+        if self.DEBUG:
+            origins.append("*")
+            
+        return origins
     
     class Config:
         env_file = ".env"
